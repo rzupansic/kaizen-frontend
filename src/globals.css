@@ -1,0 +1,65 @@
+@import "tailwindcss";
+@import "@heroui/styles"; 
+
+@theme {
+  --color-kinu: #efe6d4;
+  --color-sheet: #faf6ec;
+  --color-sumi: #1c1814;
+  --color-gold: #d0ad6a;
+  --color-gold-deep: #7a5c24;
+  --color-vermilion: #c43b22;
+
+  --color-background: var(--color-kinu);
+  --color-card: var(--color-sheet);
+  --color-foreground: var(--color-sumi);
+  --color-primary: var(--color-gold);
+  --color-secondary: var(--color-sumi);
+  --color-muted: var(--color-gold-deep);
+  --color-accent: var(--color-vermilion);
+
+  --font-sans: "Zen Kaku Gothic New", ui-sans-serif, system-ui, sans-serif;
+  --font-heading: "Shippori Mincho", ui-serif, Georgia, serif;
+
+  --radius-xs: 5px;
+  --radius-sm: 7.5px;
+  --radius-md: 10px;
+  --radius-lg: 12.5px;
+  --radius-xl: 15px;
+  --radius-2xl: 17.5px;
+  --radius-3xl: 20px;
+  --radius-4xl: 22.5px;
+}
+
+@layer base {
+  html {
+    @apply bg-kinu text-sumi font-sans antialiased;
+  }
+
+  body {
+    @apply min-h-screen bg-kinu text-sumi;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-heading text-sumi tracking-wide;
+  }
+
+  button,
+  input,
+  textarea,
+  select {
+    @apply rounded-none;
+  }
+}
+
+@utility hanko {
+  @apply inline-flex size-10 items-center justify-center rounded-full bg-vermilion font-heading text-sm font-bold tracking-wider text-sheet;
+}
+
+@utility avatar {
+  @apply rounded-full;
+}
