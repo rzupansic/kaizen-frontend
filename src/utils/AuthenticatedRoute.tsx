@@ -1,8 +1,7 @@
 import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Navigate } from "react-router";
-import { me } from "../api/authApi.ts";
-import { setUser } from "../slices/authSlice.ts";
+import { restoreSession } from "../slices/authSlice.ts";
 import type { AppDispatch, RootState } from "../slices/store.ts";
 
 interface AuthenticatedRouteProps {
@@ -15,10 +14,7 @@ export default function AuthenticatedRoute({ children }: AuthenticatedRouteProps
 
   useEffect(() => {
     if (status !== "unknown") return;
-
-    me()
-      .then((user) => dispatch(setUser(user)))
-      .catch(() => dispatch(setUser(null)));
+    dispatch(restoreSession());
   }, [status, dispatch]);
 
   if (status === "unknown") {

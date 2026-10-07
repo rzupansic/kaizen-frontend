@@ -1,7 +1,6 @@
 import { useNavigate } from "react-router";
 import { useDispatch } from "react-redux";
-import { logout } from "../../api/authApi.ts";
-import { setUser } from "../../slices/authSlice.ts";
+import { logout } from "../../slices/authSlice.ts";
 import type { AppDispatch } from "../../slices/store.ts";
 
 export default function Home() {
@@ -10,9 +9,8 @@ export default function Home() {
 
   const handleLogout = async () => {
     try {
-      await logout();
+      await dispatch(logout()).unwrap();
     } finally {
-      dispatch(setUser(null));
       navigate("/login");
     }
   };

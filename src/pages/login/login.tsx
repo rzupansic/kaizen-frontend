@@ -2,8 +2,7 @@ import { Link, useNavigate } from "react-router";
 import { Input, Button } from '@heroui/react';
 import { useState } from "react";
 import { useDispatch } from "react-redux";
-import { login, me } from "../../api/authApi.ts";
-import { setUser } from "../../slices/authSlice.ts";
+import { login } from "../../slices/authSlice.ts";
 import type { AppDispatch } from "../../slices/store.ts";
 
 export default function Login() {
@@ -16,13 +15,11 @@ export default function Login() {
   const handleLogin = async () => {
     try {
       setError("");
-      await login(email, password);
-      const user = await me();
-      dispatch(setUser(user));
+      await dispatch(login({ email, password })).unwrap();
       navigate("/");
     } catch (error) {
       console.error("Login failed:", error);
-      setError("Invalid email or password");
+      setError(error instanceof Error ? error.message : "An unknown error occurred");
     }
   }
 
