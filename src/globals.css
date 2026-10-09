@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import "@heroui/styles"; 
+@import "@heroui/styles";
 
 @theme {
   --color-kinu: #efe6d4;
@@ -32,11 +32,11 @@
 
 @layer base {
   html {
-    @apply bg-kinu text-sumi font-sans antialiased;
+    @apply bg-kinu text-sumi antialiased font-sans;
   }
 
   body {
-    @apply min-h-screen bg-kinu text-sumi;
+    @apply min-h-screen bg-background text-foreground;
   }
 
   h1,
