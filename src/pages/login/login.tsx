@@ -1,9 +1,10 @@
 import { Link, useNavigate } from "react-router";
-import { Input, Button } from '@heroui/react';
+import { Button } from '@heroui/react';
 import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { login } from "../../slices/authSlice.ts";
 import type { AppDispatch } from "../../slices/store.ts";
+import TextField from "@mui/material/TextField";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -32,23 +33,30 @@ export default function Login() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-kinu text-sumi">
+    <div className="flex min-h-screen flex-col items-center justify-center parchment text-sumi">
       <h1 className="text-3xl font-bold my-4 text-gold-deep">Kaizen Logo Goes Here</h1> 
-      <div className="flex flex-col bg-sheet p-10 rounded-lg w-full max-w-md ">
+      <div className="flex flex-col bg-sheet p-10 rounded-lg w-full max-w-md gap-4">
         
-      <Input
+      <TextField
+        label="Email"
         type="email"
         placeholder="Email"
+        variant="outlined"
         value={email}
         onChange={handleEmailChange}
-        className="my-2 w-full focus:border-gold focus:ring-gold data-[focused=true]:border-gold data-[focused=true]:ring-gold"
+        className="my-2 w-full"
+        slotProps={{ input: { sx: { borderRadius: "17.5px", backgroundColor: "white" } } }}
+        
         />
-        <Input
+        <TextField
+        label="Password"
         type="password"
         placeholder="Password"
+        variant="outlined"
         value={password}
         onChange={handlePasswordChange}
-        className="my-2 w-full focus:border-gold focus:ring-gold data-[focused=true]:border-gold data-[focused=true]:ring-gold"
+        className="my-2 w-full"
+        slotProps={{ input: { sx: { borderRadius: "17.5px", backgroundColor: "white" } } }}
         />
         <Link to="/forgot-password" className="text-gold-deep hover:text-gold-deep/80 hover:underline text-right">Forgot Password?</Link>
         {error ? <p className="my-2 text-vermilion">{error}</p> : null}

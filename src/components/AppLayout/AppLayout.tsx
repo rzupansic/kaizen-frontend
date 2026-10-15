@@ -12,30 +12,22 @@ import ListItemIcon from "@mui/material/ListItemIcon";
 import ListItemText from "@mui/material/ListItemText";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
-import { ThemeProvider, createTheme } from "@mui/material/styles";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import DashboardIcon from "@mui/icons-material/Dashboard";
-import { logout } from "../../slices/authSlice.ts";
-import type { AppDispatch, RootState } from "../../slices/store.ts";
 import CalendarIcon from "@mui/icons-material/CalendarMonth";
 import SettingsIcon from "@mui/icons-material/Settings";
+import { logout } from "../../slices/authSlice.ts";
+import type { AppDispatch, RootState } from "../../slices/store.ts";
+import { theme } from "../../theme.ts";
 
 const expandedWidth = 240;
 const collapsedWidth = 88;
 
-const theme = createTheme({
-  palette: {
-    background: { default: "#efe6d4", paper: "#faf6ec" },
-    text: { primary: "#1c1814" },
-    primary: { main: "#d0ad6a", contrastText: "#1c1814" },
-  },
-  typography: {
-    fontFamily: '"Zen Kaku Gothic New", ui-sans-serif, system-ui, sans-serif',
-  },
-  shape: { borderRadius: 0 },
-});
-
-const navItems = [{ to: "/", label: "Dashboard", icon: DashboardIcon }, { to: "/calendar", label: "Calendar", icon: CalendarIcon }, { to: "/settings", label: "Settings", icon: SettingsIcon }];
+const navItems = [
+  { to: "/", label: "Dashboard", icon: DashboardIcon },
+  { to: "/calendar", label: "Calendar", icon: CalendarIcon },
+  { to: "/settings", label: "Settings", icon: SettingsIcon },
+];
 
 export default function AppLayout() {
   const dispatch = useDispatch<AppDispatch>();
@@ -54,9 +46,9 @@ export default function AppLayout() {
   };
 
   return (
-    <ThemeProvider theme={theme}>
+    <>
       <Box sx={{ display: "flex", height: "100vh", overflow: "hidden" }}>
-        <Drawer
+        {/* <Drawer
           variant="permanent"
           sx={{
             width,
@@ -174,7 +166,7 @@ export default function AppLayout() {
               Current User: {user?.email}
             </Typography>
           )}
-        </Drawer>
+        </Drawer> */}
         <Box
           component="main"
           sx={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, minHeight: 0, overflow: "hidden" }}
@@ -203,6 +195,6 @@ export default function AppLayout() {
           </Box>
         </Box>
       </Box>
-    </ThemeProvider>
+    </>
   );
 }

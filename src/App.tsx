@@ -2,7 +2,7 @@ import { Link } from "react-router";
 
 function App() {
   return (
-    <div className="flex min-h-screen flex-col bg-kinu text-sumi">
+    <div className="flex min-h-screen flex-col parchment text-sumi">
       <main className="flex flex-1 flex-col items-center justify-center p-8">
         <div className="flex w-full max-w-xl flex-col items-center gap-4 bg-sheet p-10 text-center shadow-[4px_4px_0_0_#1c1814]">
           <span className="hanko" aria-hidden="true">

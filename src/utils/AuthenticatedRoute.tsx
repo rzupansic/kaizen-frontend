@@ -19,7 +19,7 @@ export default function AuthenticatedRoute({ children }: AuthenticatedRouteProps
 
   if (status === "unknown") {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-kinu text-sumi">
+      <div className="flex min-h-screen items-center justify-center parchment text-sumi">
         Loading...
       </div>
     );

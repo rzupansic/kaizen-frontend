@@ -3,6 +3,7 @@ import { kaizenApiRequest } from "../utils/kaizenApi";
 
 export type AuthUser = {
   email: string;
+  name: string;
 };
 
 type AuthState = {
