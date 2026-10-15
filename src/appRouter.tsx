@@ -1,6 +1,7 @@
 import { BrowserRouter, Route, Routes } from "react-router";
 import AppLayout from "./components/AppLayout/AppLayout.tsx";
 import Login from "./pages/login/login.tsx";
+import Register from "./pages/register/register.tsx";
 import Home from "./pages/home/home.tsx";
 import AuthenticatedRoute from "./utils/AuthenticatedRoute.tsx";
 import NotFound from "./pages/notFound/notFound.tsx";
@@ -10,6 +11,7 @@ export default function AppRouter() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
         <Route element={<AuthenticatedRoute><AppLayout /></AuthenticatedRoute>}>
           <Route path="/" element={<Home />} />
         </Route>

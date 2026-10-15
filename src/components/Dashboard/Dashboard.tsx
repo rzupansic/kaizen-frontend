@@ -191,8 +191,13 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [showWeightModal, setShowWeightModal] = useState(false);
   const [showWorkoutModal, setShowWorkoutModal] = useState(false);
-  // Bumped after a save to refetch quietly (no spinner, so the chart keeps its range).
   const [reloadKey, setReloadKey] = useState(0);
+
+  const selected = seriesOptions.find((option) => option.id === series) ?? seriesOptions[0];
+  const points = series === "weight" ? weightPoints(weights) : workoutPoints(workouts);
+  const recentWeights = [...weights].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 6);
+  const recentWorkouts = [...workouts].sort((a, b) => b.date.localeCompare(a.date));
+
 
   useEffect(() => {
     let cancelled = false;
@@ -226,10 +231,10 @@ export default function Dashboard() {
       cancelled = true;
     };
   }, [reloadKey]);
-  const selected = seriesOptions.find((option) => option.id === series) ?? seriesOptions[0];
-  const points = series === "weight" ? weightPoints(weights) : workoutPoints(workouts);
-  const recentWeights = [...weights].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 6);
-  const recentWorkouts = [...workouts].sort((a, b) => b.date.localeCompare(a.date));
+
+
+
+
   return (
     <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_18rem] gap-4">
       <div className="grid min-h-0 grid-rows-2 bg-sheet">

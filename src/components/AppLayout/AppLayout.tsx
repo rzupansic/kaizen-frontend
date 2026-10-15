@@ -18,7 +18,6 @@ import CalendarIcon from "@mui/icons-material/CalendarMonth";
 import SettingsIcon from "@mui/icons-material/Settings";
 import { logout } from "../../slices/authSlice.ts";
 import type { AppDispatch, RootState } from "../../slices/store.ts";
-import { theme } from "../../theme.ts";
 
 const expandedWidth = 240;
 const collapsedWidth = 88;
@@ -182,6 +181,7 @@ export default function AppLayout() {
               borderColor: "rgba(208, 173, 106, 0.45)",
             }}
           >
+            <Typography variant="h6" noWrap sx={{ flex: 1, fontFamily: '"Shippori Mincho", ui-serif, Georgia, serif', fontSize: "1.5rem"  }} className="text-gold-deep font-bold">Kaizen</Typography>
             <Button
               variant="contained"
               onClick={handleLogout}

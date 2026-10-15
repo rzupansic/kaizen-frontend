@@ -41,6 +41,16 @@ export const login = createAsyncThunk(
   },
 );
 
+export const register = createAsyncThunk(
+  "auth/register",
+  async ({ name, email, password }: { name: string; email: string; password: string }) => {
+    await kaizenApiRequest("/api/auth/register", {
+      method: "POST",
+      data: { name, email, password },
+    });
+  },
+);
+
 export const logout = createAsyncThunk("auth/logout", async () => {
   const data = await kaizenApiRequest<LoginResponse>("/api/auth/logout", {
     method: "POST",

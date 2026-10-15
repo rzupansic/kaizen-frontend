@@ -15,7 +15,7 @@ import AddIcon from "@mui/icons-material/Add";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutlined";
 import { useDispatch } from "react-redux";
 import { kaizenApiRequest } from "../../utils/kaizenApi.ts";
-import { addWeight, addWorkout } from "../../slices/logSlice.ts";
+import { addWeight, addWorkout, createExercise, getExercises } from "../../slices/logSlice.ts";
 import type { AppDispatch } from "../../slices/store.ts";
 
 export type LogMode = "weight" | "workout";
@@ -145,6 +145,11 @@ function WorkoutForm({ onClose, onLogged }: FormProps) {
   const [exercisesError, setExercisesError] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [creatingExercise, setCreatingExercise] = useState(false);
+  const [exerciseName, setExerciseName] = useState("");
+  const [exerciseMuscleGroup, setExerciseMuscleGroup] = useState("");
+  const [exerciseDescription, setExerciseDescription] = useState("");
   const dispatch = useDispatch<AppDispatch>();
 
   useEffect(() => {
@@ -152,10 +157,14 @@ function WorkoutForm({ onClose, onLogged }: FormProps) {
 
     async function loadExercises() {
       try {
-        const data = await kaizenApiRequest<{ exercises: Exercise[] }>("/api/exercises");
-        if (!cancelled) setExercises(data.exercises);
+        const data = await dispatch(getExercises()).unwrap();
+        if (!cancelled) {
+          setExercises(data as unknown as Exercise[]);
+          setLoading(false);
+        }
       } catch {
         if (!cancelled) setExercisesError("Could not load the exercise list.");
+        setLoading(false);
       }
     }
 
@@ -211,6 +220,31 @@ function WorkoutForm({ onClose, onLogged }: FormProps) {
       ),
     );
 
+  const handleStartCreateExercise = async () => {
+    setCreatingExercise(true);
+    setExerciseName("");
+    setExerciseMuscleGroup("");
+    setExerciseDescription("");
+  };
+
+  const handleCreateExercise = async () => {
+    const created = await dispatch(createExercise({ name: exerciseName, muscleGroup: exerciseMuscleGroup, description: exerciseDescription })).unwrap();
+    if (created) {
+      setCreatingExercise(false);
+      setExerciseName("");
+      setExerciseMuscleGroup("");
+      setExerciseDescription("");
+    }
+    setExercises([...exercises, created as unknown as Exercise]);
+  };
+
+  const handleCancelCreateExercise = () => {
+    setCreatingExercise(false);
+    setExerciseName("");
+    setExerciseMuscleGroup("");
+    setExerciseDescription("");
+  };
+
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
 
@@ -251,7 +285,7 @@ function WorkoutForm({ onClose, onLogged }: FormProps) {
   };
   return (
     <form onSubmit={handleSubmit} noValidate style={{ display: "contents" }}>
-      <DialogTitle sx={{ fontFamily: HEADING_FONT }}>Log workout</DialogTitle>
+      <DialogTitle sx={{ fontFamily: HEADING_FONT }}>Log workout for today</DialogTitle>
       <DialogContent dividers>
         <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", sm: "1fr 11rem" }, pt: 1 }}>
           <TextField
@@ -264,8 +298,8 @@ function WorkoutForm({ onClose, onLogged }: FormProps) {
           <TextField
             label="Date"
             type="date"
-            value={date}
-            onChange={(event) => setDate(event.target.value)}
+            disabled
+            value={localToday()}
             slotProps={{ inputLabel: { shrink: true } }}
           />
         </Box>
@@ -282,7 +316,6 @@ function WorkoutForm({ onClose, onLogged }: FormProps) {
         <Typography sx={{ mt: 3, mb: 1, fontFamily: HEADING_FONT, color: "#7a5c24" }}>
           Exercises
         </Typography>
-
         {entries.map((entry) => (
           <Box
             key={entry.exerciseId}
@@ -340,18 +373,48 @@ function WorkoutForm({ onClose, onLogged }: FormProps) {
             </Button>
           </Box>
         ))}
+        {creatingExercise && (
+          <Box sx={{ mb: 2, p: 1.5, border: "1px solid rgba(208, 173, 106, 0.6)", display: "flex", flexDirection: "column", gap: 1 }}>
+            <TextField
+              autoFocus
+              label="Exercise name"
+              placeholder="Push, Pull, Legs..."
+              value={exerciseName}
+              onChange={(event) => setExerciseName(event.target.value)}
+            />
+            <TextField
+              label="Muscle group"
+              placeholder="Push, Pull, Legs..."
+              value={exerciseMuscleGroup}
+              onChange={(event) => setExerciseMuscleGroup(event.target.value)}
+            />
+            <TextField
+              label="Description"
+              placeholder="Description" 
+              value={exerciseDescription}
+              onChange={(event) => setExerciseDescription(event.target.value)}
+            />
+
+            <Box sx={{ display: "flex", gap: 1 }}>
+              <Button onClick={handleCreateExercise} disabled={saving}>Create exercise</Button>
+              <Button onClick={handleCancelCreateExercise} disabled={saving}>Cancel</Button>
+            </Box>
+          </Box>
+        )}
+        
 
         <Autocomplete
           options={available}
-          groupBy={(option) => option.muscle_group ?? "Other"}
+          groupBy={(option) => (option.muscle_group?.slice(0, 1).toUpperCase() + (option.muscle_group?.slice(1).toLowerCase() ?? "")) || "Other"}
           getOptionLabel={(option) => option.name}
           value={null}
           onChange={(_event, exercise) => {
             if (exercise) addExercise(exercise);
           }}
-          noOptionsText={exercises.length === 0 && !exercisesError ? "Loading..." : "No exercises left"}
+          noOptionsText={exercises.length === 0 && !exercisesError && loading ? "Loading..." : "No exercises available"}
           renderInput={(params) => <TextField {...params} size="small" label="Add exercise" />}
         />
+        <Button onClick={handleStartCreateExercise} disabled={saving}>Create exercise</Button>
         {exercisesError && (
           <Alert severity="warning" sx={{ mt: 2 }}>
             {exercisesError}
