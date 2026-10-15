@@ -190,7 +190,7 @@ export default function AppLayout() {
               Logout
             </Button>
           </Box>
-          <Box sx={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden", p: 3 }}>
+          <Box sx={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: { xs: "auto", lg: "hidden" }, p: { xs: 2, lg: 3 } }}>
             <Outlet />
           </Box>
         </Box>

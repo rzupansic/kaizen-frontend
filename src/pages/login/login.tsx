@@ -58,7 +58,7 @@ export default function Login() {
         className="my-2 w-full"
         slotProps={{ input: { sx: { borderRadius: "17.5px", backgroundColor: "white" } } }}
         />
-        <Link to="/forgot-password" className="text-gold-deep hover:text-gold-deep/80 hover:underline text-right">Forgot Password?</Link>
+        {/* TODO <Link to="/forgot-password" className="text-gold-deep hover:text-gold-deep/80 hover:underline text-right">Forgot Password?</Link> */}
         {error ? <p className="my-2 text-vermilion">{error}</p> : null}
         <Button className="w-full my-2 bg-gold text-sumi hover:bg-gold-deep" onClick={handleLogin}>Login</Button>
         <Link to="/register" className="text-gold-deep hover:text-gold-deep/80 hover:underline">Don't have an account? Register Here</Link>

@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ActivityCalendar, type Activity } from "react-activity-calendar";
+import { IndeterminateProgressCircle } from "../Dashboard/Dashboard";
 
 type WeightLogEntry = {
   date: string;
@@ -37,11 +38,10 @@ function formatLong(iso: string) {
 }
 
 function useElementSize<T extends HTMLElement>() {
-  const ref = useRef<T | null>(null);
+  const [element, setElement] = useState<T | null>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
 
   useEffect(() => {
-    const element = ref.current;
     if (!element) return;
 
     const observer = new ResizeObserver(([entry]) => {
@@ -51,9 +51,9 @@ function useElementSize<T extends HTMLElement>() {
     });
     observer.observe(element);
     return () => observer.disconnect();
-  }, []);
+  }, [element]);
 
-  return [ref, size] as const;
+  return [setElement, size] as const;
 }
 
 function buildActivities(weightsByDay: Map<string, number>, weekCount: number): Activity[] {
@@ -77,7 +77,8 @@ function buildActivities(weightsByDay: Map<string, number>, weekCount: number): 
   return activities;
 }
 
-export default function WeightLog({ weights }: { weights: WeightLogEntry[] }) {
+export default function WeightLog({ weights, isLoading }: { weights: WeightLogEntry[], isLoading: boolean }) {
+
   const [containerRef, { width, height }] = useElementSize<HTMLDivElement>();
 
   const blockSize = Math.min(MAX_BLOCK, Math.max(MIN_BLOCK, Math.floor((height - CHROME_HEIGHT) / 8)));
@@ -94,8 +95,16 @@ export default function WeightLog({ weights }: { weights: WeightLogEntry[] }) {
   const loggedCount = activities.filter((activity) => activity.level > 0).length;
   const ready = width > 0 && height > 0;
 
+  if (isLoading) {
+    return (
+      <section className="flex min-h-[22rem] flex-col items-center justify-center overflow-hidden border-b border-gold-deep p-4 lg:min-h-0">
+        <IndeterminateProgressCircle />
+      </section>
+    );
+  }
+
   return (
-    <section className="flex h-full min-h-0 flex-col overflow-hidden  p-4">
+    <section className="flex min-h-72 flex-col overflow-hidden p-4 lg:h-full lg:min-h-0">
       <h2 className="shrink-0 text-xl font-bold text-gold-deep">Weight log</h2>
       <p className="mb-2 shrink-0 text-sm text-gold-deep">
         {loggedCount} {loggedCount === 1 ? "day" : "days"} with a weight logged in the last {weekCount} weeks

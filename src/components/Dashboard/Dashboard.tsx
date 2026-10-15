@@ -109,8 +109,8 @@ function RangeChart({ points, unit }: { points: ChartPoint[]; unit: string }) {
       <p className="mb-2 shrink-0 text-gold-deep">
         Latest: {latest.value} {unit}
       </p>
-      <div className="relative min-h-0 flex-1 select-none">
-        <ResponsiveContainer width="100%" height="100%">
+      <div className="relative min-h-48 flex-1 select-none">
+        <ResponsiveContainer width="100%" height="100%" minHeight={192}>
           <LineChart data={visible} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
             <CartesianGrid stroke="#1c1814" strokeOpacity={0.15} />
             <XAxis
@@ -155,7 +155,7 @@ function toLocalDateKey(value: string | Date) {
 
 function TodayPrompt({ message, action, onClick }: { message: string; action: string; onClick: () => void }) {
   return (
-    <p className="flex items-center gap-2 text-xs text-gold-deep">
+    <p className="flex flex-wrap items-center gap-2 text-xs text-gold-deep">
       {message}
       <Button
         variant="contained"
@@ -204,11 +204,13 @@ export default function Dashboard() {
 
     async function load() {
       try {
+        setIsLoading(true);
         const [weightResponse, workoutResponse] = await Promise.all([
           kaizenApiRequest<{ weights: WeightEntry[] }>("/api/weights"),
           kaizenApiRequest<{ workouts: WorkoutSummary[] }>("/api/workouts"),
         ]);
         if (cancelled) return;
+        
         const today = toLocalDateKey(new Date());
         setWeights(weightResponse.weights);
         setWorkouts(workoutResponse.workouts);
@@ -218,11 +220,11 @@ export default function Dashboard() {
         setNoWorkoutForToday(
           !workoutResponse.workouts.some((entry) => entry.date.slice(0, 10) === today),
         );
-
+        setIsLoading(false);
       } catch {
         if (!cancelled) setError("Could not load dashboard data.");
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
     }
 
@@ -236,12 +238,18 @@ export default function Dashboard() {
 
 
   return (
-    <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_18rem] gap-4">
-      <div className="grid min-h-0 grid-rows-2 bg-sheet">
-      {isLoading ? <IndeterminateProgressCircle /> : <section className="flex min-h-0 flex-col overflow-hidden  p-4 border-b border-gold-deep">
+    <div className="grid grid-cols-1 gap-4 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,1fr)_18rem]">
+      <div className="grid min-h-0 grid-cols-1 bg-sheet lg:h-full lg:grid-rows-2">
+      <section className="flex min-h-[22rem] flex-col overflow-hidden border-b border-gold-deep p-4 lg:min-h-0">
+      {isLoading ? (
+        <div className="flex flex-1 items-center justify-center">
+          <IndeterminateProgressCircle />
+        </div>
+      ) : (
+        <>
         <TagGroup
           aria-label="Chart data"
-          className="mb-3 flex-row items-center justify-between pb-2"
+          className="mb-3 flex-col items-stretch gap-2 pb-2 sm:flex-row sm:items-center sm:justify-between"
           selectionMode="single"
           disallowEmptySelection
           selectedKeys={[series]}
@@ -266,7 +274,9 @@ export default function Dashboard() {
           ) : null}
         </TagGroup>
         {error ? <p className="text-vermilion">{error}</p> : <TrendChart points={points} unit={selected.unit} />}
-      </section>}
+        </>
+      )}
+      </section>
       {showWeightModal && (
         <LogModal
           type="weight"
@@ -282,11 +292,11 @@ export default function Dashboard() {
         />
       )}
 
-      <WeightLog weights={weights} />
+      <WeightLog weights={weights} isLoading={isLoading}/>
       </div>
 
-      <div className="grid min-h-0 grid-rows-2 gap-4">
-        <section className="flex min-h-0 flex-col overflow-hidden bg-sheet p-4">
+      <div className="grid min-h-0 grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-1 lg:grid-rows-2">
+        <section className="flex min-h-48 flex-col overflow-hidden bg-sheet p-4 lg:min-h-0">
           <h2 className="shrink-0 text-xl font-bold text-gold-deep border-b border-gold-deep pb-2">Recent Weights</h2>
           {recentWeights.length === 0 ? (
             <p className="mt-2 text-gold-deep">No weights logged yet.</p>
@@ -301,7 +311,7 @@ export default function Dashboard() {
             </ul>
           )}
         </section>
-        <section className="flex min-h-0 flex-col overflow-hidden bg-sheet p-4">
+        <section className="flex min-h-48 flex-col overflow-hidden bg-sheet p-4 lg:min-h-0">
           <h2 className="shrink-0 text-xl font-bold text-gold-deep border-b border-gold-deep pb-2">Recent Lifts</h2>
           {recentWorkouts.length === 0 ? (
             <p className="mt-2 text-gold-deep">No lifts logged yet.</p>

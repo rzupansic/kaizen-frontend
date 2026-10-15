@@ -45,7 +45,7 @@ export default function DateRangeSelector({ dates, value, onChange }: DateRangeS
   };
 
   return (
-    <div className="flex shrink-0 items-center gap-4 pt-2">
+    <div className="flex shrink-0 flex-col gap-2 pt-2 sm:flex-row sm:items-center sm:gap-4">
       <ToggleButtonGroup
         exclusive
         size="small"
@@ -54,6 +54,7 @@ export default function DateRangeSelector({ dates, value, onChange }: DateRangeS
         onChange={(_event, preset: PresetId | null) => {
           if (preset) onChange(rangeForPreset(dates, preset));
         }}
+        sx={{ flexWrap: "wrap" }}
       >
         {PRESETS.map((preset) => (
           <ToggleButton
@@ -99,7 +100,7 @@ export default function DateRangeSelector({ dates, value, onChange }: DateRangeS
         }}
       />
 
-      <span className="shrink-0 text-xs text-gold-deep">
+      <span className="shrink-0 text-xs text-gold-deep sm:text-right">
         {dates[shown.start] ? formatShort(dates[shown.start]) : ""} – {dates[shown.end] ? formatShort(dates[shown.end]) : ""}
       </span>
     </div>
