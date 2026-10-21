@@ -13,7 +13,9 @@ export const kaizenApiRequest = async <T = any>(
     const response = await fetch(`${BASE_URL}${endpoint}`, {
       method: options.method ?? 'GET',
       credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
+      // Fastify rejects an empty body when Content-Type is JSON (e.g. DELETE),
+      // so only declare JSON when there is actually a body to send.
+      headers: options.data === undefined ? undefined : { 'Content-Type': 'application/json' },
       body: options.data === undefined ? undefined : JSON.stringify(options.data),
     });
     const data = await response.json().catch(() => null);

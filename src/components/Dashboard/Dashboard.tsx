@@ -1,5 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from "react";
-import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import type { ReactNode } from "react";
+import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import WeightLog from "../WeightLog/WeightLog.tsx";
 import DateRangeSelector from "../DateRangeSelector/DateRangeSelector.tsx";
 import { rangeForPreset } from "../DateRangeSelector/dateRange.ts";
@@ -8,6 +9,22 @@ import { TagGroup, Tag } from "@heroui/react";
 import {ProgressCircle} from "@heroui/react";
 import Button from "@mui/material/Button";
 import LogModal from "../LogModal/LogModal.tsx";
+import WeightEditDialog from "../WeightEditDialog/WeightEditDialog.tsx";
+import WorkoutDetailDialog from "../WorkoutDetailDialog/WorkoutDetailDialog.tsx";
+import GoalDialog from "../GoalDialog/GoalDialog.tsx";
+import { dayKey, formatDay, formatDayLong, toLocalDateKey } from "../../utils/dates.ts";
+import { useGoalWeight } from "../../utils/useGoalWeight.ts";
+import { chartTooltipStyle } from "../../utils/chartTheme.ts";
+import {
+  buildExerciseHistories,
+  collectPRs,
+  goalProgress,
+  prsByWorkout,
+  weeklyRate,
+  withMovingAverage,
+  type GoalProgress,
+} from "../../utils/trainingStats.ts";
+import type { SetRow, WeightEntry, WorkoutSummary } from "../../types.ts";
 
 type SeriesId = "weight" | "workouts";
 
@@ -15,34 +32,14 @@ type ChartPoint = {
   date: string;
   label: string;
   value: number;
-};
-
-type WeightEntry = {
-  id: number;
-  weight: number;
-  date: string;
-};
-
-type WorkoutSummary = {
-  id: number;
-  name: string;
-  date: string;
-  notes: string | null;
+  /** Trailing 7-day average; only present for the body weight series. */
+  average?: number;
 };
 
 const seriesOptions: { id: SeriesId; label: string; unit: string }[] = [
   { id: "weight", label: "Body weight", unit: "lb" },
   { id: "workouts", label: "Workouts", unit: "sessions" },
 ];
-
-function formatDay(value: string) {
-  const [year, month, day] = value.slice(0, 10).split("-").map(Number);
-  if (!year || !month || !day) return value;
-  return new Date(year, month - 1, day).toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-  });
-}
 
 
 export function IndeterminateProgressCircle() {
@@ -57,13 +54,12 @@ export function IndeterminateProgressCircle() {
 }
 
 function weightPoints(weights: WeightEntry[]): ChartPoint[] {
-  return [...weights]
-    .sort((a, b) => a.date.localeCompare(b.date))
-    .map((entry) => ({
-      date: entry.date.slice(0, 10),
-      label: formatDay(entry.date),
-      value: entry.weight,
-    }));
+  return withMovingAverage(weights).map((point) => ({
+    date: point.date,
+    label: formatDay(point.date),
+    value: point.weight,
+    average: point.average,
+  }));
 }
 
 function workoutPoints(workouts: WorkoutSummary[]): ChartPoint[] {
@@ -81,34 +77,51 @@ function workoutPoints(workouts: WorkoutSummary[]): ChartPoint[] {
     }));
 }
 
-function TrendChart({ points, unit }: { points: ChartPoint[]; unit: string }) {
+type TrendChartProps = {
+  points: ChartPoint[];
+  unit: string;
+  /** Replaces the default "Latest: ..." line above the chart. */
+  header?: ReactNode;
+  /** Draws a goal line and keeps it inside the y-axis range. */
+  goal?: number | null;
+};
+
+function TrendChart({ points, unit, header, goal }: TrendChartProps) {
   if (points.length === 0) {
     return (
-      <p className="px-2 py-10 text-center text-gold-deep items-center justify-center m-auto">
-        Nothing logged for {unit == "lb" ? "weight" : "workouts"} yet Log some data to see a trend.
-      </p>
+      <div className="flex flex-1 flex-col items-center justify-center gap-2">
+        <p className="px-2 py-10 text-center text-gold-deep items-center justify-center m-auto">
+          Nothing logged for {unit == "lb" ? "weight" : "workouts"} yet Log some data to see a trend.
+        </p>
+        {header}
+      </div>
     );
   }
 
-  return <RangeChart key={unit} points={points} unit={unit} />;
+  // Keyed on length so the visible window resets when entries are added or removed.
+  return <RangeChart key={`${unit}-${points.length}`} points={points} unit={unit} header={header} goal={goal} />;
 }
 
-function RangeChart({ points, unit }: { points: ChartPoint[]; unit: string }) {
+function RangeChart({ points, unit, header, goal }: TrendChartProps) {
   const dates = useMemo(() => points.map((point) => point.date), [points]);
   const [range, setRange] = useState(() => rangeForPreset(dates, "3M"));
   const latest = points[points.length - 1];
   const visible = points.slice(range.start, range.end + 1);
   const visibleSpan = range.end - range.start;
+  const hasAverage = points.some((point) => point.average !== undefined);
   const allValues = points.map((point) => point.value);
+  if (goal !== null && goal !== undefined) allValues.push(goal);
   const yMin = Math.min(...allValues);
   const yMax = Math.max(...allValues);
   const yPadding = yMax === yMin ? 1 : (yMax - yMin) * 0.08;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <p className="mb-2 shrink-0 text-gold-deep">
-        Latest: {latest.value} {unit}
-      </p>
+      {header ?? (
+        <p className="mb-2 shrink-0 text-gold-deep">
+          Latest: {latest.value} {unit}
+        </p>
+      )}
       <div className="relative min-h-48 flex-1 select-none">
         <ResponsiveContainer width="100%" height="100%" minHeight={192}>
           <LineChart data={visible} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
@@ -127,16 +140,36 @@ function RangeChart({ points, unit }: { points: ChartPoint[]; unit: string }) {
               domain={[Math.floor(yMin - yPadding), Math.ceil(yMax + yPadding)]}
               allowDataOverflow
             />
-            <Tooltip labelFormatter={(value) => formatDay(String(value))} />
+            <Tooltip {...chartTooltipStyle} labelFormatter={(value) => formatDay(String(value))} />
+            {goal !== null && goal !== undefined && (
+              <ReferenceLine
+                y={goal}
+                stroke="#c43b22"
+                strokeDasharray="6 4"
+                label={{ value: `Goal ${goal}`, position: "insideTopRight", fill: "#c43b22", fontSize: 12 }}
+              />
+            )}
             <Line
               type="monotone"
               dataKey="value"
-              name={unit}
-              stroke="#7a5c24"
-              strokeWidth={3}
-              dot={visibleSpan < 45 ? { fill: "#c43b22", r: 3 } : false}
+              name={hasAverage ? "Weight" : unit}
+              // With a smoothed line on top, the raw daily values step back to a thinner, lighter line.
+              stroke={hasAverage ? "#c9a45c" : "#7a5c24"}
+              strokeWidth={hasAverage ? 1.5 : 3}
+              dot={visibleSpan < 45 ? { fill: "#c43b22", r: hasAverage ? 2.5 : 3 } : false}
               activeDot={{ r: 4, fill: "#c43b22" }}
             />
+            {hasAverage && (
+              <Line
+                type="monotone"
+                dataKey="average"
+                name="7-day avg"
+                stroke="#7a5c24"
+                strokeWidth={3}
+                dot={false}
+                activeDot={{ r: 4, fill: "#7a5c24" }}
+              />
+            )}
           </LineChart>
         </ResponsiveContainer>
       </div>
@@ -145,12 +178,68 @@ function RangeChart({ points, unit }: { points: ChartPoint[]; unit: string }) {
   );
 }
 
-function toLocalDateKey(value: string | Date) {
-  const d = new Date(value);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+/** Compact stats row above the body weight chart: latest, smoothed value, trend and goal. */
+function WeightSummary({
+  weights,
+  goal,
+  progress,
+  onEditGoal,
+}: {
+  weights: WeightEntry[];
+  goal: number | null;
+  progress: GoalProgress | null;
+  onEditGoal: () => void;
+}) {
+  const smoothed = useMemo(() => withMovingAverage(weights), [weights]);
+  const rate = useMemo(() => weeklyRate(weights), [weights]);
+  const latest = smoothed[smoothed.length - 1];
+  if (!latest) return null;
+
+  const signed = (value: number) => `${value > 0 ? "+" : value < 0 ? "−" : ""}${Math.abs(value).toFixed(1)}`;
+
+  let goalText: string | null = null;
+  if (goal !== null && progress) {
+    const toGo = Math.abs(progress.remaining).toFixed(1);
+    if (progress.status === "reached") {
+      goalText = `Goal ${goal} lb reached`;
+    } else if (progress.status === "on-track" && progress.etaDate) {
+      goalText = `Goal ${goal} lb · ${toGo} lb to go · on pace for ${formatDayLong(progress.etaDate)}`;
+    } else if (progress.status === "off-track") {
+      goalText = `Goal ${goal} lb · ${toGo} lb to go · recent trend isn't heading there`;
+    } else {
+      goalText = `Goal ${goal} lb · ${toGo} lb to go · log a few more weeks for a finish estimate`;
+    }
+  }
+
+  return (
+    <div className="mb-2 flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gold-deep">
+      <span>
+        Latest: <strong>{latest.weight}</strong> lb
+      </span>
+      <span className="flex items-center gap-1">
+        <span aria-hidden className="inline-block h-0.5 w-4 bg-gold-deep" />
+        7-day avg: <strong>{latest.average}</strong> lb
+      </span>
+      {rate !== null && (
+        <span title="Least-squares change over the last 28 days">
+          Trend: <strong>{signed(rate)}</strong> lb/wk
+        </span>
+      )}
+      {goalText ? (
+        <span className="flex items-center gap-1 text-vermilion">
+          <span aria-hidden className="inline-block w-4 border-t-2 border-dashed border-vermilion" />
+          {goalText}
+        </span>
+      ) : null}
+      <Button
+        size="small"
+        onClick={onEditGoal}
+        sx={{ minWidth: 0, px: 1, py: 0, fontSize: "0.75rem", textTransform: "none" }}
+      >
+        {goal === null ? "Set goal" : "Edit goal"}
+      </Button>
+    </div>
+  );
 }
 
 function TodayPrompt({ message, action, onClick }: { message: string; action: string; onClick: () => void }) {
@@ -192,11 +281,26 @@ export default function Dashboard() {
   const [showWeightModal, setShowWeightModal] = useState(false);
   const [showWorkoutModal, setShowWorkoutModal] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  const [setRows, setSetRows] = useState<SetRow[]>([]);
+  const [editingWeight, setEditingWeight] = useState<WeightEntry | null>(null);
+  const [openWorkoutId, setOpenWorkoutId] = useState<number | null>(null);
+  const [showGoalDialog, setShowGoalDialog] = useState(false);
+  const [goal, setGoal] = useGoalWeight();
+
+  const reload = () => setReloadKey((key) => key + 1);
 
   const selected = seriesOptions.find((option) => option.id === series) ?? seriesOptions[0];
   const points = series === "weight" ? weightPoints(weights) : workoutPoints(workouts);
-  const recentWeights = [...weights].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 6);
+  const recentWeights = [...weights].sort((a, b) => dayKey(b.date).localeCompare(dayKey(a.date))).slice(0, 30);
   const recentWorkouts = [...workouts].sort((a, b) => b.date.localeCompare(a.date));
+  const latestWeight = weights.length
+    ? [...weights].sort((a, b) => dayKey(a.date).localeCompare(dayKey(b.date))).at(-1)!.weight
+    : null;
+  const progress = useMemo(() => (goal === null ? null : goalProgress(weights, goal)), [weights, goal]);
+  const workoutPRs = useMemo(
+    () => prsByWorkout(collectPRs(buildExerciseHistories(setRows))),
+    [setRows],
+  );
 
 
   useEffect(() => {
@@ -205,15 +309,18 @@ export default function Dashboard() {
     async function load() {
       try {
         setIsLoading(true);
-        const [weightResponse, workoutResponse] = await Promise.all([
+        const [weightResponse, workoutResponse, historyResponse] = await Promise.all([
           kaizenApiRequest<{ weights: WeightEntry[] }>("/api/weights"),
           kaizenApiRequest<{ workouts: WorkoutSummary[] }>("/api/workouts"),
+          // Only feeds the PR badges, so a failure here must not break the dashboard.
+          kaizenApiRequest<{ sets: SetRow[] }>("/api/workouts/history").catch(() => ({ sets: [] as SetRow[] })),
         ]);
         if (cancelled) return;
         
         const today = toLocalDateKey(new Date());
         setWeights(weightResponse.weights);
         setWorkouts(workoutResponse.workouts);
+        setSetRows(historyResponse.sets);
         setNoWeightForToday(
           !weightResponse.weights.some((entry) => entry.date.slice(0, 10) === today),
         );
@@ -273,7 +380,25 @@ export default function Dashboard() {
             <TodayPrompt message="No workouts logged for today." action="Log Workout" onClick={() => setShowWorkoutModal(true)} />
           ) : null}
         </TagGroup>
-        {error ? <p className="text-vermilion">{error}</p> : <TrendChart points={points} unit={selected.unit} />}
+        {error ? (
+          <p className="text-vermilion">{error}</p>
+        ) : (
+          <TrendChart
+            points={points}
+            unit={selected.unit}
+            goal={series === "weight" ? goal : null}
+            header={
+              series === "weight" && weights.length > 0 ? (
+                <WeightSummary
+                  weights={weights}
+                  goal={goal}
+                  progress={progress}
+                  onEditGoal={() => setShowGoalDialog(true)}
+                />
+              ) : undefined
+            }
+          />
+        )}
         </>
       )}
       </section>
@@ -281,14 +406,37 @@ export default function Dashboard() {
         <LogModal
           type="weight"
           onClose={() => setShowWeightModal(false)}
-          onLogged={() => setReloadKey((key) => key + 1)}
+          onLogged={reload}
         />
       )}
       {showWorkoutModal && (
         <LogModal
           type="workout"
           onClose={() => setShowWorkoutModal(false)}
-          onLogged={() => setReloadKey((key) => key + 1)}
+          onLogged={reload}
+        />
+      )}
+      {editingWeight && (
+        <WeightEditDialog
+          entry={editingWeight}
+          onClose={() => setEditingWeight(null)}
+          onChanged={reload}
+        />
+      )}
+      {openWorkoutId !== null && (
+        <WorkoutDetailDialog
+          workoutId={openWorkoutId}
+          prs={workoutPRs.get(openWorkoutId)}
+          onClose={() => setOpenWorkoutId(null)}
+          onChanged={reload}
+        />
+      )}
+      {showGoalDialog && (
+        <GoalDialog
+          goal={goal}
+          latest={latestWeight}
+          onSave={setGoal}
+          onClose={() => setShowGoalDialog(false)}
         />
       )}
 
@@ -303,9 +451,16 @@ export default function Dashboard() {
           ) : (
             <ul className="mt-3 flex min-h-0 flex-1 flex-col gap-3 overflow-auto">
               {recentWeights.map((entry) => (
-                <li key={entry.id} className="flex items-baseline justify-between gap-2 border-b border-gold/30 pb-3 last:border-b-0">
-                  <span className="text-sumi">{formatDay(entry.date)}</span>
-                  <span className="font-medium text-gold-deep">{entry.weight} lb</span>
+                <li key={entry.id} className="border-b border-gold/30 pb-3 last:border-b-0">
+                  <button
+                    type="button"
+                    onClick={() => setEditingWeight(entry)}
+                    aria-label={`Edit weight for ${formatDay(entry.date)}`}
+                    className="flex w-full cursor-pointer items-baseline justify-between gap-2 text-left hover:bg-kinu"
+                  >
+                    <span className="text-sumi">{formatDay(entry.date)}</span>
+                    <span className="font-medium text-gold-deep">{entry.weight} lb</span>
+                  </button>
                 </li>
               ))}
             </ul>
@@ -317,14 +472,34 @@ export default function Dashboard() {
             <p className="mt-2 text-gold-deep">No lifts logged yet.</p>
           ) : (
             <ul className="mt-3 flex min-h-0 flex-1 flex-col gap-3 overflow-auto">
-              {recentWorkouts.map((workout) => (
-                <li key={workout.id} className="border-b border-gold/30 pb-3 last:border-b-0">
-                  <p className="font-medium text-sumi">
-                    {formatDay(workout.date)} - {workout.name}
-                  </p>
-                  {workout.notes && <p className="text-sm text-gold-deep">Note: {workout.notes}</p>}
-                </li>
-              ))}
+              {recentWorkouts.map((workout) => {
+                const prs = workoutPRs.get(workout.id);
+                return (
+                  <li key={workout.id} className="border-b border-gold/30 pb-3 last:border-b-0">
+                    <button
+                      type="button"
+                      onClick={() => setOpenWorkoutId(workout.id)}
+                      aria-label={`Open ${workout.name} workout from ${formatDay(workout.date)}`}
+                      className="block w-full cursor-pointer text-left hover:bg-kinu"
+                    >
+                      <p className="flex items-center gap-2 font-medium text-sumi">
+                        <span>
+                          {formatDay(workout.date)} - {workout.name}
+                        </span>
+                        {prs && (
+                          <span
+                            className="rounded-sm bg-vermilion px-1.5 text-xs font-bold tracking-wide text-sheet"
+                            title={prs.map((pr) => `${pr.exerciseName}: est. 1RM ${Math.round(pr.oneRepMax)} lb`).join("\n")}
+                          >
+                            PR{prs.length > 1 ? ` ×${prs.length}` : ""}
+                          </span>
+                        )}
+                      </p>
+                      {workout.notes && <p className="text-sm text-gold-deep">Note: {workout.notes}</p>}
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>

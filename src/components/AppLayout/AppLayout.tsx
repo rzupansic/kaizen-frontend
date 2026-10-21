@@ -22,6 +22,11 @@ import type { AppDispatch, RootState } from "../../slices/store.ts";
 const expandedWidth = 240;
 const collapsedWidth = 88;
 
+const headerLinks = [
+  { to: "/", label: "Dashboard" },
+  { to: "/training", label: "Training" },
+];
+
 const navItems = [
   { to: "/", label: "Dashboard", icon: DashboardIcon },
   { to: "/calendar", label: "Calendar", icon: CalendarIcon },
@@ -182,6 +187,46 @@ export default function AppLayout() {
             }}
           >
             <Typography variant="h6" noWrap sx={{ flex: 1, fontFamily: '"Shippori Mincho", ui-serif, Georgia, serif', fontSize: "1.5rem"  }} className="text-gold-deep font-bold">Kaizen</Typography>
+            <Box
+              component="nav"
+              aria-label="Main"
+              sx={{
+                display: "flex",
+                gap: 0.5,
+                mx: 2,
+                p: 0.5,
+                borderRadius: 999,
+                border: "1px solid rgba(208, 173, 106, 0.7)",
+                bgcolor: "background.paper",
+              }}
+            >
+              {headerLinks.map((link) => {
+                const active = pathname === link.to;
+                return (
+                  <Button
+                    key={link.to}
+                    component={NavLink}
+                    to={link.to}
+                    end
+                    aria-current={active ? "page" : undefined}
+                    disableElevation
+                    sx={{
+                      minWidth: 112,
+                      px: 2.5,
+                      py: 0.5,
+                      borderRadius: 999,
+                      textTransform: "none",
+                      fontWeight: active ? 700 : 500,
+                      bgcolor: active ? "primary.main" : "transparent",
+                      color: active ? "primary.contrastText" : "#7a5c24",
+                      "&:hover": { bgcolor: active ? "primary.main" : "rgba(208, 173, 106, 0.25)" },
+                    }}
+                  >
+                    {link.label}
+                  </Button>
+                );
+              })}
+            </Box>
             <Button
               variant="contained"
               onClick={handleLogout}
