@@ -10,12 +10,17 @@ import ListItem from "@mui/material/ListItem";
 import ListItemButton from "@mui/material/ListItemButton";
 import ListItemIcon from "@mui/material/ListItemIcon";
 import ListItemText from "@mui/material/ListItemText";
+import Menu from "@mui/material/Menu";
+import MenuItem from "@mui/material/MenuItem";
+import Divider from "@mui/material/Divider";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import CalendarIcon from "@mui/icons-material/CalendarMonth";
 import SettingsIcon from "@mui/icons-material/Settings";
+import AccountCircleIcon from "@mui/icons-material/AccountCircle";
+import LogoutIcon from "@mui/icons-material/Logout";
 import { logout } from "../../slices/authSlice.ts";
 import type { AppDispatch, RootState } from "../../slices/store.ts";
 
@@ -39,6 +44,9 @@ export default function AppLayout() {
   const { pathname } = useLocation();
   const user = useSelector((state: RootState) => state.auth.user);
   const [open, setOpen] = useState(true);
+  const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
+  const menuOpen = Boolean(menuAnchor);
+  const closeMenu = () => setMenuAnchor(null);
   const width = open ? expandedWidth : collapsedWidth;
 
   const handleLogout = async () => {
@@ -227,13 +235,46 @@ export default function AppLayout() {
                 );
               })}
             </Box>
-            <Button
-              variant="contained"
-              onClick={handleLogout}
-              sx={{ ml: "auto" }}
+            <Tooltip title="Account">
+              <IconButton
+                aria-label="Account menu"
+                aria-haspopup="true"
+                aria-controls={menuOpen ? "account-menu" : undefined}
+                aria-expanded={menuOpen ? "true" : undefined}
+                onClick={(e) => setMenuAnchor(e.currentTarget)}
+                sx={{ ml: "auto", color: "#7a5c24" }}
+              >
+                <AccountCircleIcon fontSize="large" />
+              </IconButton>
+            </Tooltip>
+            <Menu
+              id="account-menu"
+              anchorEl={menuAnchor}
+              open={menuOpen}
+              onClose={closeMenu}
+              anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+              transformOrigin={{ vertical: "top", horizontal: "right" }}
             >
-              Logout
-            </Button>
+              {user?.email && (
+                <MenuItem disabled sx={{ opacity: "1 !important" }}>
+                  <Typography variant="body2" color="text.secondary">
+                    {user.email}
+                  </Typography>
+                </MenuItem>
+              )}
+              {user?.email && <Divider />}
+              <MenuItem
+                onClick={() => {
+                  closeMenu();
+                  handleLogout();
+                }}
+              >
+                <ListItemIcon>
+                  <LogoutIcon fontSize="small" />
+                </ListItemIcon>
+                Logout
+              </MenuItem>
+            </Menu>
           </Box>
           <Box sx={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: { xs: "auto", lg: "hidden" }, p: { xs: 2, lg: 3 } }}>
             <Outlet />
